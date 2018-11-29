@@ -1,18 +1,37 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
+	"os"
+	"os/exec"
 	"time"
 
-	as "../../../amqpserv"
+	as "github.com/abkhan/amqpserv"
 	log "github.com/sirupsen/logrus"
 )
 
-type PiTest struct {
-	Who string `json:"iAm"`
-	Msg string `json:"myMsg"`
-	Cmd string `json:"myCmd"`
+type CmdReq struct {
+	Who string            `json:"iAm"`
+	Msg string            `json:"msg"`
+	Cmd string            `json:"cmd"`
+	Env map[string]string `json:"env"`
+}
+
+func (p *CmdReq) run() string {
+	cmd := exec.Command(p.Cmd)
+	for en, ev := range p.Env {
+		cmd.Env = append(os.Environ(), en+"="+ev)
+	}
+	//cmd.Stdin = strings.NewReader("some input")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return "cmd exec error: " + err.Error()
+	}
+	return out.String()
 }
 
 // Version of the service
@@ -22,16 +41,16 @@ var (
 	startTime time.Time = time.Now()
 	amqs      *as.Service
 	mh        as.MessageHandler = remCmdServFunc
-	commands  map[string][]string
+	commands  map[string]CmdReq
 )
 
 func main() {
 
 	flag.Parse()
-	commands = make(map[string][]string)
+	commands = make(map[string]CmdReq)
 
 	// Starting remote command Service
-	sname := "remcmd-" // add uname -n value here
+	sname := "remcmd-" + "mac" // add uname -n value here
 	amqs = as.AmqpService(sname)
 	defer amqs.Cleanup()
 
@@ -53,24 +72,22 @@ func main() {
 
 //
 func retInfo() interface{} {
-	return &PiTest{}
+	return &CmdReq{}
 }
 
 func remCmdServFunc(md as.MessageDelivery) (interface{}, error) {
 
 	msg := md.Message
 
-	preq, k := msg.(*PiTest)
+	preq, k := msg.(*CmdReq)
 	if !k {
 		return nil, fmt.Errorf("ReqMessage: Parsing Error")
 	}
 
 	if preq.Who == "Don" {
 		log.Infof("Done Called")
-		return soFar, nil
+		return commands, nil
 	}
-
-	log.Infof("%s says %s", preq.Who, preq.Msg)
-	soFar[preq.Who] = preq.Msg
-	return "Got it, " + preq.Who, nil
+	commands[preq.Who] = *preq
+	return preq.run(), nil
 }
