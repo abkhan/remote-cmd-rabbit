@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	as "github.com/abkhan/amqpserv"
@@ -21,6 +22,10 @@ type CmdReq struct {
 
 func (p *CmdReq) run() string {
 	cmd := exec.Command(p.Cmd)
+	cmdp := strings.Split(p.Cmd, " ")
+	if len(cmdp) > 1 {
+		cmd = exec.Command(cmdp[0], cmdp[1:]...)
+	}
 	for en, ev := range p.Env {
 		cmd.Env = append(os.Environ(), en+"="+ev)
 	}
@@ -89,5 +94,6 @@ func remCmdServFunc(md as.MessageDelivery) (interface{}, error) {
 		return commands, nil
 	}
 	commands[preq.Who] = *preq
+	log.Infof("Running Cmd: %+v", preq)
 	return preq.run(), nil
 }
