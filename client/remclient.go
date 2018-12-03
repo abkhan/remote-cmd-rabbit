@@ -8,8 +8,7 @@ import (
 	"strings"
 	"time"
 
-	amqps "amqpserv"
-
+	amqps "github.com/abkhan/amqpserv"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -26,6 +25,7 @@ var (
 	BuildDate           = "today, haha" // Build date to be provided by build script
 	startTime time.Time = time.Now()
 	amqs      *amqps.Service
+	target    = "hi"
 	name      string
 	msg       string
 	env       map[string]string
@@ -34,6 +34,14 @@ var (
 func main() {
 
 	flag.Parse()
+
+	// read name from user
+	fmt.Println("Please provide your name.")
+	name = readline()
+
+	fmt.Println("Where you want to connect?")
+	printTargets()
+	target = readline()
 
 	// Starting alarm Service
 	amqs = amqps.AmqpService("RemClientTest")
@@ -44,10 +52,6 @@ func main() {
 
 	//this sleep is required to avoid search timeout issue
 	time.Sleep(5 * time.Second)
-
-	// read name from user
-	fmt.Println("Please provide your name.")
-	name = readline()
 
 	env = make(map[string]string)
 	for {
@@ -87,7 +91,7 @@ func sendCmd(cmd string) {
 	}
 
 	// create a message
-	m := amqps.MessagePublishing{Message: dqr, Context: amqps.NewContext(nil), RoutingKeys: []string{"remcmd-mac"}}
+	m := amqps.MessagePublishing{Message: dqr, Context: amqps.NewContext(nil), RoutingKeys: []string{"remcmd-" + target}}
 
 	a, e := amqs.RPCPublishTimed(m, 15*time.Second)
 	if e != nil {
@@ -106,6 +110,12 @@ func printOptions() {
 	fmt.Println("#2: Clear Env Vars")
 	fmt.Println("#3: Command")
 	fmt.Println("#4: Quit")
+}
+
+func printTargets() {
+	fmt.Println("\n--Targets-----------------")
+	fmt.Println("Like mac/dev/etc")
+	fmt.Println("\n--------------------------")
 }
 
 func readline() string {
