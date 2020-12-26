@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	as "github.com/abkhan/amqpserv"
+	as "github.com/abkhan/mqwrap"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -44,7 +44,7 @@ var (
 	BuildTag            = "0.1.1" // Build version to be provided by build script
 	BuildDate           = "na"    // Build date to be provided by build script
 	startTime time.Time = time.Now()
-	amqs      *as.Service
+	amqs      *as.MQWrap
 	mh        as.MessageHandler = remCmdServFunc
 	commands  map[string]CmdReq
 )
@@ -53,26 +53,30 @@ func main() {
 
 	flag.Parse()
 	commands = make(map[string]CmdReq)
+	host, err := os.Hostname()
+	if err != nil {
+		log.Fatalf("error getting hostname: %+v", err)
+	}
+
+	log.Infof("Run RemCmd Server on %s", host)
+	log.Infof(">> Build Version %s, on date %s", BuildTag, BuildDate)
 
 	// Starting remote command Service
-	sname := "remcmd-" + "mac" // add uname -n value here
-	amqs = as.AmqpService(sname)
-	defer amqs.Cleanup()
-
-	log.Infof("Run RemCmd Server")
-	log.Infof(">> Build Version %s, on date %s", BuildTag, BuildDate)
+	sname := "remcmd-" + host 
+	amqs = as.NewMQReceiver(sname)
+	amqs.ExchangeName = "amq.topic"
 
 	//this sleep is required to avoid search timeout issue
 	time.Sleep(3 * time.Second)
+	log.Info("Creating handler")
 
-	if err := amqs.ConsumeFunc(sname, []string{sname}, retInfo, mh); err != nil {
+	if err := amqs.AddHandler(sname, []string{sname}, false, retInfo, mh); err != nil {
 		log.Fatalf("remcmd service ..  failed to consume: %+v", err)
 	}
 	log.Infof("%s Service now consuming on %s", sname, sname)
 
-	// setup end processing
-	amqs.Wait()
-
+	// stay alive
+	select{}
 }
 
 //
