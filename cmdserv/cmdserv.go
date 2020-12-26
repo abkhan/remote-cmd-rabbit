@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+	"encoding/json"
 
 	as "github.com/abkhan/mqwrap"
 	log "github.com/sirupsen/logrus"
@@ -87,17 +88,23 @@ func retInfo() interface{} {
 func remCmdServFunc(md as.MessageDelivery) (interface{}, error) {
 
 	msg := md.Message
+	c := CmdReq{}
 
-	preq, k := msg.(*CmdReq)
-	if !k {
-		return nil, fmt.Errorf("ReqMessage: Parsing Error")
+	if mb, k := msg.([]byte); !k {
+		return nil, fmt.Errorf("ReqMessage: [] byte assertion Error")
+	} else {
+		err := json.Unmarshal(mb, &c)
+		if err != nil {
+			log.Infof("msg> %+v", c)
+			return nil, fmt.Errorf("ReqMessage: Unmarshall Error")
+		}
 	}
-
-	if preq.Who == "Don" {
+	
+	if c.Who == "Don" {
 		log.Infof("Done Called")
 		return commands, nil
 	}
-	commands[preq.Who] = *preq
-	log.Infof("Running Cmd: %+v", preq)
-	return preq.run(), nil
+	commands[c.Who] = c
+	log.Infof("Running Cmd: %+v", c)
+	return c.run(), nil
 }
