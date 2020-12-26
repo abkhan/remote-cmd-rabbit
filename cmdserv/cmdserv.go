@@ -21,6 +21,8 @@ type CmdReq struct {
 	Env map[string]string `json:"env"`
 }
 
+const useExchange = "scope.polling"
+
 func (p *CmdReq) run() string {
 	cmd := exec.Command(p.Cmd)
 	cmdp := strings.Split(p.Cmd, " ")
@@ -65,7 +67,7 @@ func main() {
 	// Starting remote command Service
 	sname := "remcmd-" + host 
 	amqs = as.NewMQReceiver(sname)
-	amqs.ExchangeName = "amq.topic"
+	amqs.ExchangeName = useExchange
 
 	//this sleep is required to avoid search timeout issue
 	time.Sleep(3 * time.Second)
