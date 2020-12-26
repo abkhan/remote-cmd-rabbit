@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	amqps "github.com/abkhan/amqpserv"
+	mq "github.com/abkhan/mqwrap"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -24,7 +24,7 @@ var (
 	BuildTag            = "0.1.1"       // Build version to be provided by build script
 	BuildDate           = "today, haha" // Build date to be provided by build script
 	startTime time.Time = time.Now()
-	amqs      *amqps.Service
+	amqs      *mq.MQWrap
 	target    = "hi"
 	name      string
 	msg       string
@@ -44,8 +44,8 @@ func main() {
 	target = readline()
 
 	// Starting alarm Service
-	amqs = amqps.AmqpService("RemClientTest")
-	defer amqs.Cleanup()
+	amqs = mq.NewMQSender("RemoteClient")
+	amqs.ExchangeName = "amq.topic"
 
 	log.Infof("RemCmd as Client")
 	log.Infof(">> Build Version %s, on date %s", BuildTag, BuildDate)
@@ -90,16 +90,12 @@ func sendCmd(cmd string) {
 		Env: env,
 	}
 
-	// create a message
-	m := amqps.MessagePublishing{Message: dqr, Context: amqps.NewContext(nil), RoutingKeys: []string{"remcmd-" + target}}
-
-	a, e := amqs.RPCPublishTimed(m, 15*time.Second)
+	// send
+	e := amqs.SendToRabbit(dqr, "remcmd-formill-masjid-pi", "amq.topic")
 	if e != nil {
 		log.Errorf("PublishError: %s", e.Error())
 	} else {
-		fmt.Println("Ret -->")
-		fmt.Printf("%+v", a.Message)
-		fmt.Println("\n<--")
+		fmt.Println("Sent")
 	}
 
 }
