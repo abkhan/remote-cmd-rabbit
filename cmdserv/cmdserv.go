@@ -21,9 +21,15 @@ type CmdReq struct {
 	Env map[string]string `json:"env"`
 }
 
+type RespMsg struct {
+	Who  string `json:"iAm"`
+	Cmd  string `json:"cmd"`
+	Resp string `json:"msg"`
+}
+
 const useExchange = "scope.polling"
 
-func (p *CmdReq) run() string {
+func (p *CmdReq) run() RespMsg {
 	cmd := exec.Command(p.Cmd)
 	cmdp := strings.Split(p.Cmd, " ")
 	if len(cmdp) > 1 {
@@ -37,9 +43,10 @@ func (p *CmdReq) run() string {
 	cmd.Stdout = &out
 	err := cmd.Run()
 	if err != nil {
-		return "cmd exec error: " + err.Error()
+		return RespMsg{Who: "masjidpi", Cmd: p.Cmd, Resp: "cmd exec error: " + err.Error())
 	}
-	return out.String()
+
+	return RespMsg{Who: "masjidpi", Cmd: p.Cmd, Resp: out.String()}
 }
 
 // Version of the service

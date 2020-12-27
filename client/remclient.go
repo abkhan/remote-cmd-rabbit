@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -157,13 +158,19 @@ func retInfo() interface{} {
 func cmdRespFunc(md mq.MessageDelivery) (interface{}, error) {
 
 	msg := md.Message
+	r := RespMsg{}
 
-	presp, k := msg.(*RespMsg)
-	if !k {
-		log.Errorf("Response:\n%+v\n", msg)
-		return nil, fmt.Errorf("RespMsg: Parsing Error")
+	if mb, k := msg.([]byte); !k {
+		return nil, fmt.Errorf("RespMessage: [] byte assertion Error")
+	} else {
+		err := json.Unmarshal(mb, &r)
+		if err != nil {
+			log.Infof("msg> %+v", r)
+			return nil, fmt.Errorf("RespMessage: Unmarshall Error")
+		}
 	}
-	log.Infof("Response:\n%+v\n", presp)
+
+	log.Infof("Response:\n%s\n", r)
 
 	return nil, nil
 }
