@@ -43,7 +43,7 @@ func (p *CmdReq) run() RespMsg {
 	cmd.Stdout = &out
 	err := cmd.Run()
 	if err != nil {
-		return RespMsg{Who: "masjidpi", Cmd: p.Cmd, Resp: "cmd exec error: " + err.Error())
+		return RespMsg{Who: "masjidpi", Cmd: p.Cmd, Resp: "cmd exec error: " + err.Error()}
 	}
 
 	return RespMsg{Who: "masjidpi", Cmd: p.Cmd, Resp: out.String()}
