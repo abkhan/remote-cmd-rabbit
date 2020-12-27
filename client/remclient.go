@@ -19,6 +19,18 @@ type CmdReq struct {
 	Env map[string]string `json:"env"`
 }
 
+type RespMsg struct {
+	Who  string `json:"iAm"`
+	Cmd  string `json:"cmd"`
+	Resp string `json:"msg"`
+}
+
+const (
+	//useTopic = "amq.topic"
+	useTopic = "scope.polling"
+	ownName  = "remoteClientTest"
+)
+
 // Version of the service
 var (
 	BuildTag            = "0.1.1"       // Build version to be provided by build script
@@ -43,9 +55,11 @@ func main() {
 	printTargets()
 	target = readline()
 
+	reader(ownName, useTopic)
+
 	// Starting alarm Service
-	amqs = mq.NewMQSender("RemoteClient")
-	amqs.ExchangeName = "amq.topic"
+	amqs = mq.NewMQSender(ownName, useTopic)
+	amqs.ExchangeName = useTopic
 
 	log.Infof("RemCmd as Client")
 	log.Infof(">> Build Version %s, on date %s", BuildTag, BuildDate)
@@ -91,7 +105,7 @@ func sendCmd(cmd string) {
 	}
 
 	// send
-	e := amqs.SendToRabbit(dqr, "remcmd-formill-masjid-pi", "amq.topic")
+	e := amqs.SendToRabbit(dqr, "remcmd-formill-masjid-pi", useTopic, ownName)
 	if e != nil {
 		log.Errorf("PublishError: %s", e.Error())
 	} else {
@@ -122,4 +136,34 @@ func readline() string {
 	// convert CRLF to LF
 	text = strings.Replace(text, "\n", "", -1)
 	return text
+}
+
+// n: name, also
+// t: topic
+func reader(n, t string) {
+
+	mqr := mq.NewMQReceiver(n)
+	mqr.ExchangeName = useTopic
+	if err := mqr.AddHandler(n, []string{n}, false, retInfo, cmdRespFunc); err != nil {
+		log.Fatalf("remcmd service ..  failed to consume: %+v", err)
+	}
+	log.Infof("%s Service now consuming on %s", n, n)
+}
+
+func retInfo() interface{} {
+	return &RespMsg{}
+}
+
+func cmdRespFunc(md mq.MessageDelivery) (interface{}, error) {
+
+	msg := md.Message
+
+	presp, k := msg.(*RespMsg)
+	if !k {
+		log.Errorf("Response:\n%+v\n", msg)
+		return nil, fmt.Errorf("RespMsg: Parsing Error")
+	}
+	log.Infof("Response:\n%+v\n", presp)
+
+	return nil, nil
 }

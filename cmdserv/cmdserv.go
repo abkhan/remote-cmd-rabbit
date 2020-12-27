@@ -2,13 +2,13 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
-	"encoding/json"
 
 	as "github.com/abkhan/mqwrap"
 	log "github.com/sirupsen/logrus"
@@ -65,7 +65,7 @@ func main() {
 	log.Infof(">> Build Version %s, on date %s", BuildTag, BuildDate)
 
 	// Starting remote command Service
-	sname := "remcmd-" + host 
+	sname := "remcmd-" + host
 	amqs = as.NewMQReceiver(sname)
 	amqs.ExchangeName = useExchange
 
@@ -79,7 +79,7 @@ func main() {
 	log.Infof("%s Service now consuming on %s", sname, sname)
 
 	// stay alive
-	select{}
+	select {}
 }
 
 //
@@ -101,7 +101,8 @@ func remCmdServFunc(md as.MessageDelivery) (interface{}, error) {
 			return nil, fmt.Errorf("ReqMessage: Unmarshall Error")
 		}
 	}
-	
+	log.Infof("Message>ReplyTo>%s", md.Delivery.ReplyTo)
+
 	if c.Who == "Don" {
 		log.Infof("Done Called")
 		return commands, nil
